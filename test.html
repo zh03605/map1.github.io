@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang='en'>
+  <head>
+    <meta charset='utf-8' />
+    <title>Getting started with the Mapbox Directions API</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.css' rel='stylesheet' />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id='map'></div>
+    <script>
+mapboxgl.accessToken = 'pk.eyJ1IjoiemgwMzYwNSIsImEiOiJja2VwaWVyMWMwaG9kMnlwZGE0dnluMTJpIn0.Rpli0euu8biSznQJWLZAHA';
+var map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/streets-v10',
+  center: [67.1383, 24.9059], // starting position
+  zoom: 16
+});
+// set the bounds of the map
+var bounds = [[67.0, 24.6], [67.3, 25.0]];
+map.setMaxBounds(bounds);
+
+// initialize the map canvas to interact with later
+var canvas = map.getCanvasContainer();
+
+// an arbitrary start will always be the same
+// only the end or destination will change
+var start = [67.1383, 24.9059];
+
+// this is where the code for the next step will go
+// create a function to make a directions request
+function getRoute(end) {
+  // make a directions request using cycling profile
+  // an arbitrary start will always be the same
+  // only the end or destination will change
+  var start = [67.1383, 24.9059];
+  
+  var url = 'https://api.mapbox.com/directions/v5/mapbox/cycling/' + start[0] + ',' + start[1] + ';' + end[0] + ',' + end[1] + '?steps=true&geometries=geojson&access_token=' + mapboxgl.accessToken;
+
+  // make an XHR request https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest
+  var req = new XMLHttpRequest();
+  req.open('GET', url, true);
+  req.onload = function() {
+    var json = JSON.parse(req.response);
+    var data = json.routes[0];
+    var route = data.geometry.coordinates;
+    var geojson = {
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'LineString',
+        coordinates: route
+      }
+    };
+    // if the route already exists on the map, reset it using setData
+    if (map.getSource('route')) {
+      map.getSource('route').setData(geojson);
+    } else { // otherwise, make a new request
+      map.addLayer({
+        id: 'route',
+        type: 'line',
+        source: {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: geojson
+            }
+          }
+        },
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': '#3887be',
+          'line-width': 5,
+          'line-opacity': 0.75
+        }
+      });
+    }
+    // add turn instructions here at the end
+  };
+  req.send();
+}
+//map on starts here
+map.on('load', function () {
+//getroute contents
+  // make an initial directions request that
+  // starts and ends at the same location
+  getRoute(start);
+
+  // Add starting point to the map
+  map.addLayer({
+    id: 'point',
+    type: 'circle',
+    source: {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'Point',
+            coordinates: start
+          }
+        }
+        ]
+      }
+    },
+    paint: {
+      'circle-radius': 10,
+      'circle-color': '#3887be'
+    }
+  });
+
+
+
+//load pot image
+map.loadImage(
+'data:image/jpeg;base64,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',
+function (error, image) {
+if (error) throw error;
+ 
+// Add the image to the map style.
+map.addImage('pot', image);
+
+  var diff = 0.001;
+  var pot1loc = [67.1356, 24.9075];
+  var pot2loc = [67.1410, 24.9032];
+  var pot3loc = [67.1393, 24.9069];
+  var pot4loc = [67.1396164, 24.9079941];
+ 
+// Add a data source containing one point feature.
+map.addSource('pots', {
+'type': 'geojson',
+//pot1
+'data': {
+'type': 'FeatureCollection',
+'features': [
+{
+'type': 'Feature',
+'geometry': {
+'type': 'Point',
+'coordinates': pot1loc
+},
+'properties': {
+'title': 'pot1'
+}
+},
+{
+'type': 'Feature',
+'geometry': {
+'type': 'Point',
+'coordinates': pot2loc
+},
+'properties': {
+'title': 'pot2'
+}
+},
+{
+'type': 'Feature',
+'geometry': {
+'type': 'Point',
+'coordinates': pot3loc
+},
+'properties': {
+'title': 'pot3'
+}
+},
+{
+'type': 'Feature',
+'geometry': {
+'type': 'Point',
+'coordinates': pot4loc
+},
+'properties': {
+'title': 'pot4'
+}
+},
+] //features close
+} //data close
+}); //pot addsoucre close
+ 
+// Add a layer to use the image to represent the data.
+map.addLayer({
+'id': 'potss',
+'type': 'symbol',
+'source': 'pots', // reference the data source
+'layout': {
+'icon-image': 'pot', // reference the image
+'icon-size': 0.2,
+//'text-field': ['get', 'title'],
+//'text-font': [
+//'Open Sans Semibold',
+//'Arial Unicode MS Bold'
+//],
+//'text-offset': [0, 0.75],
+//'text-anchor': 'top'
+}
+}); //addlayer close
+}); //loadimage pot close
+
+
+map.on('click', function(e) {
+  var coordsObj = e.lngLat;
+  canvas.style.cursor = '';
+  var coords = Object.keys(coordsObj).map(function(key) {
+    return coordsObj[key];
+  });
+  var end = {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'Point',
+        coordinates: coords
+      }
+    }
+    ]
+  };
+  if (map.getLayer('end')) {
+    map.getSource('end').setData(end);
+  } else {
+    map.addLayer({
+      id: 'end',
+      type: 'circle',
+      source: {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: [{
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'Point',
+              coordinates: coords
+            }
+          }]
+        }
+      },
+      paint: {
+        'circle-radius': 0,
+        'circle-color': '#f30'
+      }
+    });
+  }
+  getRoute(coords);
+}); //map.on e
+
+
+}); //map.on load
+    </script>
+  </body>
+</html>
